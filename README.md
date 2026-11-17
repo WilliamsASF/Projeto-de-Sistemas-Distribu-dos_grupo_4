@@ -218,8 +218,7 @@ Funcionamento sem servidor central:
 
 Ponto em aberto: recuperação da lista local ao reconectar com o mesmo id.
 
-Como a fila é durável, os bindings continuam no broker quando o subscriber encerra. Ao reconectar com o mesmo id, a fila volta a receber as categorias antigas (verificado com `--id` repetido e sem `--assinar`), mas a lista local de assinaturas começa vazia. Por isso, o comando `listar` não mostraria o que está realmente ativo. TODO: a equipe precisa escolher entre as duas opções abaixo, e nenhuma delas foi implementada.
-
+Como a fila é durável, os bindings continuam no broker quando o subscriber encerra. Ao reconectar com o mesmo id, a fila volta a receber as categorias antigas (verificado com `--id` repetido e sem `--assinar`), mas a lista local de assinaturas começa vazia. Por isso, o comando `listar` não mostraria o que está realmente ativo.
 - Opção A: consultar a API HTTP de management (`GET /api/queues/%2F/fila.<id>/bindings`) e montar a lista a partir dos bindings da exchange `noticias`. Mantém o broker como única fonte da verdade, mas passa a depender do plugin de management e de uma segunda conexão (HTTP).
 - Opção B: guardar a lista em um arquivo local por id. É simples e não depende do management, mas o arquivo pode divergir do broker se os bindings forem alterados por outro meio (por exemplo, pela interface de management).
 
