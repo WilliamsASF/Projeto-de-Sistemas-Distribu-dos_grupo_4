@@ -1,6 +1,7 @@
 import argparse
 import json
 import sys
+import threading
 
 import pika
 
@@ -22,7 +23,7 @@ def ler_argumentos():
 
 
 def ao_receber(canal, metodo, propriedades, corpo):
-    # converte o corpo, qualquer falha aqui vira mensagem invalida
+    # converte o corpo, se falhar tá inválida
     try:
         msg = json.loads(corpo.decode("utf-8"))
         erros = mensagem.validar_mensagem(msg, routing_key=metodo.routing_key)
@@ -30,7 +31,7 @@ def ao_receber(canal, metodo, propriedades, corpo):
         erros = [f"corpo não é um JSON válido em UTF-8 ({e})"]
 
     if erros:
-        # descarta sem colocar na fila, senao a mensagem voltaria em loop
+        # descarta sem colocar na fila
         print(f"[aviso] mensagem inválida descartada (routing key {metodo.routing_key!r}):")
         for erro in erros:
             print(f"  - {erro}")
@@ -42,6 +43,18 @@ def ao_receber(canal, metodo, propriedades, corpo):
 
     canal.basic_ack(delivery_tag=metodo.delivery_tag)
 
+def consumir(nome_fila, parametros):
+    # roda na thread de fundo
+    try:
+        conexao = pika.BlockingConnection(parametros)
+        canal = conexao.channel()
+
+        # recebe uma mensagem por vez
+        canal.basic_qos(prefetch_count=1)
+        canal.basic_consume(queue=nome_fila, on_message_callback=ao_receber, auto_ack=False)
+        canal.start_consuming()
+    except pika.exceptions.AMQPError as e:
+        print(f"Erro na comunicação com o broker: {e!r}", file=sys.stderr)
 
 def main():
     args = ler_argumentos()
@@ -55,7 +68,6 @@ def main():
             print(f"Erro: {erro}", file=sys.stderr)
         return 1
 
-    # tira padroes repetidos mantendo a ordem
     padroes = list(dict.fromkeys(args.assinar))
     nome_fila = config.PREFIXO_FILA + args.id
 
@@ -64,50 +76,45 @@ def main():
         host=config.HOST, port=config.PORT, credentials=credenciais
     )
 
+    conexao = None
     try:
         conexao = pika.BlockingConnection(parametros)
-    except pika.exceptions.AMQPError as e:
-        print(f"Não foi possível conectar ao broker ({config.HOST}:{config.PORT}): {e!r}", file=sys.stderr)
-        return 2
-
-    try:
         canal = conexao.channel()
-
 
         canal.exchange_declare(exchange=config.EXCHANGE, exchange_type="topic", durable=True)
 
-
         canal.queue_declare(queue=nome_fila, durable=True, exclusive=False, auto_delete=False)
 
-        # remove assinaturas antigas, o subscriber sempre inicia sem nenhuma
+        # remove assinaturas antigas
         for padrao in config.CHAVES_PERMITIDAS + (config.PADRAO_TODAS,):
             canal.queue_unbind(queue=nome_fila, exchange=config.EXCHANGE, routing_key=padrao)
 
-
-        # um binding por padrao pedido
+        # 1 binding por padrao
         for padrao in padroes:
             canal.queue_bind(queue=nome_fila, exchange=config.EXCHANGE, routing_key=padrao)
-
-        # recebe uma mensagem por vez, so manda a proxima depois do ack
-        canal.basic_qos(prefetch_count=1)
-        canal.basic_consume(queue=nome_fila, on_message_callback=ao_receber, auto_ack=False)
-
-        print(f"Subscriber {args.id!r} conectado. Fila: {nome_fila}")
-        if padroes:
-            print(f"Assinaturas pedidas: {', '.join(padroes)}")
-        else:
-            print("Nenhuma categoria assinada nesta execução.")
-        print("Aguardando notícias (Ctrl+C para sair).")
-
-        canal.start_consuming()
-    except KeyboardInterrupt:
-        print("\nEncerrando (a fila continua no broker).")
     except pika.exceptions.AMQPError as e:
         print(f"Erro na comunicação com o broker: {e!r}", file=sys.stderr)
         return 2
     finally:
-        if conexao.is_open:
+        if conexao is not None and conexao.is_open:
             conexao.close()
+
+    print(f"Subscriber {args.id!r} conectado. Fila: {nome_fila}")
+    if padroes:
+        print(f"Assinaturas pedidas: {', '.join(padroes)}")
+    else:
+        print("Nenhuma categoria assinada nesta execução.")
+    print("Aguardando notícias (Ctrl+C para sair).")
+
+    # a thread encerra com o programa
+    thread_consumo = threading.Thread(target=consumir, args=(nome_fila, parametros), daemon=True)
+    thread_consumo.start()
+
+    try:
+        while thread_consumo.is_alive():
+            thread_consumo.join(timeout=1)
+    except KeyboardInterrupt:
+        print("\nEncerrando (a fila continua no broker).")
 
     return 0
 
