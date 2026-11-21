@@ -79,6 +79,11 @@ def main():
 
         canal.queue_declare(queue=nome_fila, durable=True, exclusive=False, auto_delete=False)
 
+        # remove assinaturas antigas, o subscriber sempre inicia sem nenhuma
+        for padrao in config.CHAVES_PERMITIDAS + (config.PADRAO_TODAS,):
+            canal.queue_unbind(queue=nome_fila, exchange=config.EXCHANGE, routing_key=padrao)
+
+
         # um binding por padrao pedido
         for padrao in padroes:
             canal.queue_bind(queue=nome_fila, exchange=config.EXCHANGE, routing_key=padrao)
