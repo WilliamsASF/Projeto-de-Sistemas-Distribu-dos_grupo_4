@@ -56,6 +56,76 @@ def consumir(nome_fila, parametros):
     except pika.exceptions.AMQPError as e:
         print(f"Erro na comunicação com o broker: {e!r}", file=sys.stderr)
 
+def alterar_binding(parametros, nome_fila, padrao, assinar):
+    # conexao curta, so para esta operacao
+    conexao = pika.BlockingConnection(parametros)
+    try:
+        canal = conexao.channel()
+        if assinar:
+            canal.queue_bind(queue=nome_fila, exchange=config.EXCHANGE, routing_key=padrao)
+        else:
+            canal.queue_unbind(queue=nome_fila, exchange=config.EXCHANGE, routing_key=padrao)
+    finally:
+        conexao.close()
+
+def laco_de_comandos(parametros, nome_fila, assinaturas):
+    print("Comandos: assinar <padrao>, cancelar <padrao>, listar, sair")
+    while True:
+        try:
+            linha = input("> ")
+        except EOFError:
+            return
+
+        partes = linha.split()
+        if not partes:
+            continue
+        comando, argumentos = partes[0].lower(), partes[1:]
+
+        if comando == "sair":
+            return
+
+        if comando == "listar":
+            if assinaturas:
+                print(f"Assinaturas ativas: {', '.join(assinaturas)}")
+            else:
+                print("Nenhuma assinatura ativa.")
+            continue
+
+        if comando not in ("assinar", "cancelar"):
+            print(f"Comando desconhecido: {comando!r}")
+            continue
+
+        if len(argumentos) != 1:
+            print(f"Uso: {comando} <padrao>")
+            continue
+
+        padrao = argumentos[0]
+        erros = mensagem.validar_padrao_assinatura(padrao)
+        if erros:
+            for erro in erros:
+                print(f"Erro: {erro}")
+            continue
+
+        if comando == "assinar" and padrao in assinaturas:
+            print(f"Você já assina {padrao!r}.")
+            continue
+        if comando == "cancelar" and padrao not in assinaturas:
+            print(f"Você não assina {padrao!r}.")
+            continue
+
+        try:
+            alterar_binding(parametros, nome_fila, padrao, assinar=(comando == "assinar"))
+        except pika.exceptions.AMQPError as e:
+            print(f"Erro na comunicação com o broker: {e!r}")
+            continue
+
+        if comando == "assinar":
+            assinaturas.append(padrao)
+            print(f"Assinatura criada: {padrao}")
+        else:
+            assinaturas.remove(padrao)
+            print(f"Assinatura removida: {padrao}")
+
 def main():
     args = ler_argumentos()
 
@@ -110,11 +180,12 @@ def main():
     thread_consumo = threading.Thread(target=consumir, args=(nome_fila, parametros), daemon=True)
     thread_consumo.start()
 
+    assinaturas = list(padroes)
     try:
-        while thread_consumo.is_alive():
-            thread_consumo.join(timeout=1)
+        laco_de_comandos(parametros, nome_fila, assinaturas)
     except KeyboardInterrupt:
-        print("\nEncerrando (a fila continua no broker).")
+        print()
+    print("Encerrando (a fila continua no broker).")
 
     return 0
 
