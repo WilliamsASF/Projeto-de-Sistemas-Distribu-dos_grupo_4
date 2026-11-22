@@ -26,3 +26,6 @@ PADRAO_TODAS = "#"
 MAX_TITULO = 100
 MAX_RESUMO = 300
 MAX_ID_SUBSCRIBER = 32
+
+# intervalo (em segundos) entre publicacoes no modo repetido do publisher
+INTERVALO_REPETIR = 1.0

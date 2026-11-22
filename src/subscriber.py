@@ -1,4 +1,5 @@
 import argparse
+import functools
 import json
 import sys
 import threading
@@ -6,6 +7,7 @@ import threading
 import pika
 
 import config
+import logs
 import mensagem
 
 
@@ -22,7 +24,7 @@ def ler_argumentos():
     return parser.parse_args()
 
 
-def ao_receber(canal, metodo, propriedades, corpo):
+def ao_receber(log, canal, metodo, propriedades, corpo):
     # converte o corpo, se falhar tá inválida
     try:
         msg = json.loads(corpo.decode("utf-8"))
@@ -32,9 +34,9 @@ def ao_receber(canal, metodo, propriedades, corpo):
 
     if erros:
         # descarta sem colocar na fila
-        print(f"[aviso] mensagem inválida descartada (routing key {metodo.routing_key!r}):")
-        for erro in erros:
-            print(f"  - {erro}")
+        log.warning(
+            "descarte routing_key=%s motivo=%s", metodo.routing_key, "; ".join(erros)
+        )
         canal.basic_nack(delivery_tag=metodo.delivery_tag, requeue=False)
         return
 
@@ -42,33 +44,42 @@ def ao_receber(canal, metodo, propriedades, corpo):
     print(f"    {msg['resumo']}")
 
     canal.basic_ack(delivery_tag=metodo.delivery_tag)
+    log.info("entrega id=%s categoria=%s", msg["id"], msg["categoria"])
 
-def consumir(nome_fila, parametros):
+def consumir(nome_fila, parametros, log):
     # roda na thread de fundo
     try:
         conexao = pika.BlockingConnection(parametros)
+        log.info("conexao estado=conectado host=%s port=%s", config.HOST, config.PORT)
         canal = conexao.channel()
 
         # recebe uma mensagem por vez
         canal.basic_qos(prefetch_count=1)
-        canal.basic_consume(queue=nome_fila, on_message_callback=ao_receber, auto_ack=False)
+        canal.basic_consume(
+            queue=nome_fila,
+            on_message_callback=functools.partial(ao_receber, log),
+            auto_ack=False,
+        )
         canal.start_consuming()
     except pika.exceptions.AMQPError as e:
+        log.error("erro_broker detalhe=%r", e)
         print(f"Erro na comunicação com o broker: {e!r}", file=sys.stderr)
 
-def alterar_binding(parametros, nome_fila, padrao, assinar):
+def alterar_binding(parametros, nome_fila, padrao, assinar, log):
     # conexao curta, so para esta operacao
     conexao = pika.BlockingConnection(parametros)
     try:
         canal = conexao.channel()
         if assinar:
             canal.queue_bind(queue=nome_fila, exchange=config.EXCHANGE, routing_key=padrao)
+            log.info("binding_criado fila=%s padrao=%s", nome_fila, padrao)
         else:
             canal.queue_unbind(queue=nome_fila, exchange=config.EXCHANGE, routing_key=padrao)
+            log.info("binding_removido fila=%s padrao=%s", nome_fila, padrao)
     finally:
         conexao.close()
 
-def laco_de_comandos(parametros, nome_fila, assinaturas):
+def laco_de_comandos(parametros, nome_fila, assinaturas, log):
     print("Comandos: assinar <padrao>, cancelar <padrao>, listar, sair")
     while True:
         try:
@@ -114,8 +125,9 @@ def laco_de_comandos(parametros, nome_fila, assinaturas):
             continue
 
         try:
-            alterar_binding(parametros, nome_fila, padrao, assinar=(comando == "assinar"))
+            alterar_binding(parametros, nome_fila, padrao, assinar=(comando == "assinar"), log=log)
         except pika.exceptions.AMQPError as e:
+            log.error("erro_broker detalhe=%r", e)
             print(f"Erro na comunicação com o broker: {e!r}")
             continue
 
@@ -138,6 +150,8 @@ def main():
             print(f"Erro: {erro}", file=sys.stderr)
         return 1
 
+    log = logs.configurar_logs(f"subscriber.{args.id}")
+
     padroes = list(dict.fromkeys(args.assinar))
     nome_fila = config.PREFIXO_FILA + args.id
 
@@ -158,11 +172,14 @@ def main():
         # remove assinaturas antigas
         for padrao in config.CHAVES_PERMITIDAS + (config.PADRAO_TODAS,):
             canal.queue_unbind(queue=nome_fila, exchange=config.EXCHANGE, routing_key=padrao)
+        log.info("limpeza_bindings fila=%s (bindings antigos removidos)", nome_fila)
 
         # 1 binding por padrao
         for padrao in padroes:
             canal.queue_bind(queue=nome_fila, exchange=config.EXCHANGE, routing_key=padrao)
+            log.info("binding_criado fila=%s padrao=%s", nome_fila, padrao)
     except pika.exceptions.AMQPError as e:
+        log.error("conexao estado=falha host=%s port=%s erro=%r", config.HOST, config.PORT, e)
         print(f"Erro na comunicação com o broker: {e!r}", file=sys.stderr)
         return 2
     finally:
@@ -177,14 +194,15 @@ def main():
     print("Aguardando notícias (Ctrl+C para sair).")
 
     # a thread encerra com o programa
-    thread_consumo = threading.Thread(target=consumir, args=(nome_fila, parametros), daemon=True)
+    thread_consumo = threading.Thread(target=consumir, args=(nome_fila, parametros, log), daemon=True)
     thread_consumo.start()
 
     assinaturas = list(padroes)
     try:
-        laco_de_comandos(parametros, nome_fila, assinaturas)
+        laco_de_comandos(parametros, nome_fila, assinaturas, log)
     except KeyboardInterrupt:
         print()
+    log.info("conexao estado=desconectado host=%s port=%s", config.HOST, config.PORT)
     print("Encerrando (a fila continua no broker).")
 
     return 0
