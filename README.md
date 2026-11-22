@@ -4,7 +4,7 @@
 - Docente: David J M Cavalcanti
 - Equipe: 04
 - Tema: Publish/Subscribe com Message Broker
-- Entrega: 1
+- Entrega: 2
 
 | Integrante                         | Logins CIn |
 | ---------------------------------- | ---------- |
@@ -18,7 +18,7 @@
 
 O sistema é um feed de notícias em tempo real. Publicadores publicam notícias categorizadas (por exemplo, tecnologia, esportes e cultura) em um broker. Inscritos assinam categorias, recebem título e resumo de forma assíncrona e podem mudar as assinaturas em tempo de execução. Não existe servidor central acoplado aos clientes.
 
-Os clientes rodam no terminal. O publisher envia uma notícia com categoria, título e resumo para o broker. O subscriber digita comandos para assinar ou cancelar categorias e vê no terminal o título e o resumo das notícias que chegam. Na Entrega 1, o subscriber mínimo só assina categorias ao iniciar (opção `--assinar`), e os comandos interativos ficam para a próxima entrega.
+Os clientes rodam no terminal. O publisher envia uma notícia com categoria, título e resumo para o broker. O subscriber digita comandos para assinar ou cancelar categorias e vê no terminal o título e o resumo das notícias que chegam. Na Entrega 2, o subscriber aceita os comandos `assinar`, `cancelar`, `listar` e `sair` enquanto continua recebendo notícias, e os dois clientes escrevem logs de conexão, publicação, entrega e assinaturas. O publisher também tem um modo repetido, para rodar vários publishers ao mesmo tempo.
 
 ## 2. Decisão tecnológica
 
@@ -31,7 +31,7 @@ Justificativa:
 - Assinatura dinâmica: assinar uma categoria é criar um binding da fila do subscriber na exchange, e cancelar é remover esse binding. O cliente faz isso direto no broker enquanto está rodando, sem precisar reiniciar nada.
 - Ambiente local: a imagem `rabbitmq:4-management` já vem com a interface web, onde dá para ver exchanges, filas e bindings. Isso ajuda a mostrar as evidências da validação.
 
-Essas características foram tiradas da documentação do RabbitMQ. Com o esqueleto do projeto, foram verificados o roteamento por categoria na exchange topic, a fila própria de cada subscriber e a criação de bindings ao iniciar o subscriber (seção 10). Os comandos interativos de assinar e cancelar ainda não foram implementados.
+Essas características foram tiradas da documentação do RabbitMQ. Na Entrega 1, foram verificados o roteamento por categoria na exchange topic, a fila própria de cada subscriber e a criação de bindings ao iniciar o subscriber (seção 10). Na Entrega 2, assinar e cancelar passaram a ser feitos por comandos em tempo de execução (seção 7), e o roteiro da validação com vários clientes está na seção 10.
 
 Linguagem e biblioteca cliente: Python 3 com pika client.
 
@@ -154,11 +154,11 @@ Não existe servidor de aplicação, por isso o estado fica dividido entre o bro
 | Filas                         | Broker                                    | Durável            | Uma por subscriber, chamada `fila.<id>`, com `durable=True`, `exclusive=False` e `auto_delete=False`      |
 | Bindings (fila e routing key) | Broker                                    | Durável            | Pertencem à fila e continuam depois que o subscriber encerra                                              |
 | Mensagens em trânsito         | Broker, dentro da fila de cada subscriber | Durável            | Publicadas com `DeliveryMode.Persistent`, ficam na fila até o ack do subscriber                           |
-| Lista de assinaturas ativas   | Subscriber, em memória                    | Volátil            | Zerada quando o subscriber é reiniciado, mas os bindings continuam no broker (ponto em aberto da seção 7) |
+| Lista de assinaturas ativas   | Subscriber, em memória                    | Volátil            | Zerada quando o subscriber é reiniciado, e os bindings antigos são removidos na partida (seção 7)         |
 | Categorias permitidas         | `src/config.py`                           | Durável            | Fica no código, e a mesma lista é usada pelo publisher e pelo subscriber                                  |
 | Parâmetros de conexão         | `src/config.py`                           | Durável            | Credenciais no código, válidas só para ambiente local                                                     |
 
-Quando o subscriber está offline, as mensagens ficam na fila dele e chegam quando ele reconecta com o mesmo id. Isso vale apenas para as categorias que tinham binding no momento da publicação. Se nenhuma fila tiver binding para a routing key, o broker descarta a mensagem. Depois do ack, a mensagem sai da fila, e o broker não guarda histórico de notícias.
+Quando o subscriber está offline, as mensagens ficam na fila dele e chegam quando ele reconecta com o mesmo id. Isso vale apenas para as categorias que tinham binding no momento da publicação. Os bindings continuam no broker enquanto o subscriber está parado, e só são removidos quando ele inicia de novo (seção 7). Se nenhuma fila tiver binding para a routing key, o broker descarta a mensagem. Depois do ack, a mensagem sai da fila, e o broker não guarda histórico de notícias.
 
 O subscriber usa ack manual (`auto_ack=False`) e `basic_qos(prefetch_count=1)`. Dessa forma, o broker só entrega a próxima mensagem depois do ack da anterior, e uma mensagem não confirmada deve voltar para a fila se a conexão cair (comportamento descrito na documentação do RabbitMQ, não testado).
 
@@ -166,17 +166,17 @@ Se o broker for reiniciado, a exchange, a fila, o binding e a mensagem persisten
 
 ## 7. Assinaturas dinâmicas
 
-Cada subscriber muda os bindings da própria fila diretamente no broker, sem servidor intermediário. Nesta entrega, essa mudança só acontece ao iniciar o subscriber. Os comandos interativos estão modelados abaixo e serão implementados na próxima entrega.
+Cada subscriber muda os bindings da própria fila diretamente no broker, sem servidor intermediário. A mudança acontece na partida (opção `--assinar`) e, na Entrega 2, também em tempo de execução, pelos comandos descritos abaixo.
 
-Inicialização do subscriber (implementada):
+Inicialização do subscriber:
 
 1. O usuário informa o `--id` (por exemplo, `sub1`), que é validado.
 2. O subscriber declara a exchange `noticias` e a fila `fila.<id>` (durável, não exclusiva e sem `auto_delete`). Se a fila já existe, ela é reaproveitada.
-3. Sem a opção `--assinar`, o subscriber inicia sem nenhuma categoria assinada e não cria nenhum binding nessa execução.
-4. A opção `--assinar <padrão>` pode ser repetida e existe só para o teste desta entrega. Cada padrão (categoria permitida ou `#`) vira um binding da fila na exchange. Padrões repetidos são ignorados, e qualquer outro padrão, inclusive `*`, faz o subscriber recusar a execução.
+3. O subscriber remove da fila os bindings antigos (os 5 padrões possíveis: `tecnologia`, `esportes`, `cultura`, `teste` e `#`), para iniciar sem nenhuma assinatura. As notícias que já estavam na fila continuam lá e são entregues.
+4. A opção `--assinar <padrão>` é um atalho opcional e pode ser repetida. Sem ela, o subscriber inicia sem nenhuma categoria assinada. Cada padrão (categoria permitida ou `#`) vira um binding da fila na exchange. Padrões repetidos são ignorados, e qualquer outro padrão, inclusive `*`, faz o subscriber recusar a execução.
 5. O subscriber começa a consumir de forma assíncrona e mostra categoria, título e resumo de cada notícia válida.
 
-Encerrar o subscriber com Ctrl+C não apaga a fila nem os bindings. Isso também vale para o comando `sair`, previsto para a próxima entrega.
+Encerrar o subscriber com Ctrl+C ou com o comando `sair` não apaga a fila nem os bindings. Os bindings só são removidos na próxima partida (passo 3).
 
 Fluxo de assinar:
 
@@ -194,14 +194,14 @@ Fluxo de cancelar:
 4. O padrão sai da lista local e o terminal mostra uma confirmação.
 5. As notícias novas deixam de chegar. Mensagens que já estavam na fila antes do cancelamento ainda podem ser entregues.
 
-Comandos do cliente subscriber (modelados, nomes a confirmar):
+Comandos do cliente subscriber (um por linha, digitados enquanto as notícias chegam):
 
 | Comando             | Efeito                                                               |
 | ------------------- | -------------------------------------------------------------------- |
 | `assinar <padrão>`  | Cria o binding e adiciona o padrão à lista                           |
 | `cancelar <padrão>` | Remove o binding e tira o padrão da lista                            |
 | `listar`            | Mostra as assinaturas ativas no momento                              |
-| `sair`              | Fecha a conexão com o broker e encerra o subscriber, mantendo a fila |
+| `sair`              | Encerra o subscriber, mantendo a fila e os bindings no broker        |
 
 Regras do `#`:
 
@@ -216,11 +216,51 @@ Funcionamento sem servidor central:
 - Como cada subscriber tem a própria fila, mudar as assinaturas de um não afeta os outros.
 - Se o usuário assinar um padrão inválido, o comando é recusado com uma mensagem de erro. Se o padrão já estiver assinado, o subscriber apenas avisa e não cria outro binding.
 
-Ponto em aberto: recuperação da lista local ao reconectar com o mesmo id.
+Recuperação da lista local ao reconectar com o mesmo id (decisão da Entrega 2):
 
-Como a fila é durável, os bindings continuam no broker quando o subscriber encerra. Ao reconectar com o mesmo id, a fila volta a receber as categorias antigas (verificado com `--id` repetido e sem `--assinar`), mas a lista local de assinaturas começa vazia. Por isso, o comando `listar` não mostraria o que está realmente ativo.
+Como a fila é durável, os bindings continuam no broker quando o subscriber encerra, mas a lista local de assinaturas começa vazia. Para as duas coisas coincidirem, o subscriber remove os bindings antigos da fila na partida (passo 3 da inicialização). Assim, a lista vazia corresponde ao que está no broker, e o comando `listar` mostra o que está realmente ativo. A consequência é que as assinaturas não sobrevivem a um reinício: é preciso assinar de novo, com `assinar` ou `--assinar`.
+
+Duas alternativas foram avaliadas e não foram adotadas, por ficarem além do mínimo pedido (ver seção 12):
+
 - Opção A: consultar a API HTTP de management (`GET /api/queues/%2F/fila.<id>/bindings`) e montar a lista a partir dos bindings da exchange `noticias`. Mantém o broker como única fonte da verdade, mas passa a depender do plugin de management e de uma segunda conexão (HTTP).
 - Opção B: guardar a lista em um arquivo local por id. É simples e não depende do management, mas o arquivo pode divergir do broker se os bindings forem alterados por outro meio (por exemplo, pela interface de management).
+
+Concorrência no subscriber:
+
+O subscriber precisa esperar notícias e esperar o usuário digitar ao mesmo tempo, e as duas operações bloqueiam (`start_consuming()` e `input()`). Por isso, cada uma roda em uma thread.
+
+| Thread    | O que faz                                                                                              | Conexão                                                          |
+| --------- | ------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------- |
+| Consumo   | `basic_consume` e `start_consuming()`. O callback valida, mostra a notícia, faz o ack e registra o log | Uma `BlockingConnection` criada dentro da thread e só usada nela |
+| Principal | Lê os comandos com `input()` e mantém a lista local de assinaturas                                     | Uma conexão curta por comando: abre, faz o bind ou unbind, fecha |
+
+Motivos do desenho:
+
+- A conexão do pika não é thread-safe, então uma conexão só é usada pela thread que a criou.
+- O binding fica no broker, e não na conexão. Criar o binding por outra conexão tem o mesmo efeito, e a fila passa a receber a categoria na hora, sem a thread de consumo saber.
+- Uma conexão parada esperando o `input()` não responde aos heartbeats do broker. A conexão curta por comando evita esse problema.
+- A thread de consumo é `daemon`, então termina junto com o programa. Uma notícia recebida e ainda sem ack volta para a fila.
+- Uma notícia pode ser impressa enquanto o usuário digita, e a linha fica misturada. Para esta entrega isso é aceitável.
+
+Logs:
+
+Os dois clientes usam `src/logs.py`, que configura o logging do Python com data, nível, nome do cliente e mensagem. Os logs vão para o stderr, e as notícias exibidas ao usuário ficam no stdout. Exemplo:
+
+```text
+2026-11-21 12:00:00 INFO publisher.pub1 publicacao id=3f2b8c1e-... categoria=esportes
+2026-11-21 12:00:00 INFO subscriber.sub1 entrega id=3f2b8c1e-... categoria=esportes
+```
+
+| Evento                               | Quem gera  | O que mostra                                                 |
+| ------------------------------------ | ---------- | ------------------------------------------------------------ |
+| `conexao`                            | os dois    | estado (conectado, desconectado ou falha), host e porta      |
+| `binding_criado`, `binding_removido` | subscriber | fila e padrão                                                |
+| `limpeza_bindings`                   | subscriber | fila, na partida (remoção dos bindings antigos)              |
+| `publicacao`                         | publisher  | id e categoria da notícia                                    |
+| `entrega`                            | subscriber | id e categoria da notícia                                    |
+| `descarte`                           | subscriber | routing key e motivo (mensagem inválida)                     |
+
+O id da notícia aparece no log do publisher e no de cada subscriber que a recebeu, então dá para seguir uma notícia do envio até cada entrega. O `publicacao` é registrado depois da confirmação do broker, que não diz se alguma fila recebeu a mensagem. O `entrega` é registrado depois do ack.
 
 ## 8. Estrutura de pastas
 
@@ -231,13 +271,19 @@ Como a fila é durável, os bindings continuam no broker quando o subscriber enc
 ├── README.md
 ├── compose.yaml
 ├── requirements.txt
+├── evidencias
+│   └── .gitkeep
 ├── src
 │   ├── config.py
+│   ├── logs.py
 │   ├── mensagem.py
 │   ├── publisher.py
 │   └── subscriber.py
 └── testes
-    └── test_mensagem.py
+    ├── test_logs.py
+    ├── test_mensagem.py
+    ├── test_publisher.py
+    └── test_subscriber.py
 ```
 
 | Item                      | Descrição                                                                                                              |
@@ -248,10 +294,15 @@ Como a fila é durável, os bindings continuam no broker quando o subscriber enc
 | `compose.yaml`            | Sobe o RabbitMQ (imagem `rabbitmq:4-management`) com as portas 5672 e 15672 e o volume `rabbitmq_data`.                |
 | `requirements.txt`        | Dependências Python (pika 1.3.2).                                                                                      |
 | `src/config.py`           | Parâmetros de conexão (hardcoded, só para ambiente local), nome da exchange, prefixo das filas, categorias e limites.  |
+| `src/logs.py`             | Configura o logging (data, nível, nome do cliente e mensagem, no stderr), usado pelos dois clientes.                   |
 | `src/mensagem.py`         | Criação e validação da mensagem, do padrão de assinatura e do id do subscriber, usado pelos dois lados.                |
-| `src/publisher.py`        | Publisher: recebe categoria, título e resumo, valida e publica na exchange `noticias`.                                 |
-| `src/subscriber.py`       | Subscriber: declara a fila `fila.<id>`, cria os bindings pedidos em `--assinar`, consome e mostra as notícias válidas. |
+| `src/publisher.py`        | Publisher: valida e publica na exchange `noticias`, uma notícia por execução ou N notícias de exemplo (`--repetir`), com logs. |
+| `src/subscriber.py`       | Subscriber: declara a fila `fila.<id>`, consome em uma thread e lê comandos (assinar, cancelar, listar, sair) na principal, com logs. |
 | `testes/test_mensagem.py` | Testes unitários (unittest) das validações de `src/mensagem.py`.                                                       |
+| `testes/test_logs.py`     | Testes do formato e do destino (stderr) dos logs.                                                                      |
+| `testes/test_publisher.py` | Testes dos argumentos do publisher e das notícias de exemplo.                                                          |
+| `testes/test_subscriber.py` | Testes dos comandos do subscriber e do tratamento das mensagens recebidas.                                             |
+| `evidencias/`             | Logs e capturas de tela da validação com vários clientes (seção 10.2).                                                 |
 
 ## 9. Como rodar
 
@@ -277,30 +328,52 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Rodar o subscriber (um terminal por subscriber):
+Rodar o subscriber (um terminal por subscriber). Os bindings antigos da fila são removidos na partida, então o subscriber sempre começa só com o que foi pedido:
 
 ```bash
-# assina a routing key de teste com o id sub1
-python src/subscriber.py --id sub1 --assinar teste
-
 # sem --assinar, o subscriber inicia sem nenhuma categoria assinada
 python src/subscriber.py --id sub1
 
-# a opcao --assinar pode ser repetida (categoria permitida ou #)
+# atalho opcional: assina na partida (pode ser repetido; o # precisa de aspas no shell)
 python src/subscriber.py --id sub2 --assinar esportes --assinar cultura
+python src/subscriber.py --id sub3 --assinar '#'
 ```
 
-Rodar o publisher (categoria, título e resumo, nessa ordem):
+Comandos do subscriber, digitados um por linha enquanto as notícias chegam:
+
+```text
+> assinar esportes
+> assinar cultura
+> listar
+> cancelar esportes
+> sair
+```
+
+Para testar a mudança de assinaturas: suba o `sub1` sem `--assinar`, publique uma notícia de `esportes` (nada chega), digite `assinar esportes` e publique outra (ela aparece), depois digite `cancelar esportes` e publique mais uma (nada chega). Um padrão inválido (como `futebol` ou `*`) é recusado, e assinar de novo um padrão já assinado só gera um aviso.
+
+Rodar o publisher. Modo de uma notícia por execução (categoria, título e resumo, nessa ordem):
 
 ```bash
 # publica uma noticia de tecnologia
 python src/publisher.py tecnologia "Título da notícia" "Resumo da notícia."
+
+# o --id aparece no nome do logger (publisher.pub1)
+python src/publisher.py --id pub1 esportes "Título" "Resumo."
 ```
+
+Modo repetido, que publica N notícias de exemplo, uma por segundo, em categorias sorteadas (use um terminal por publisher para ter vários ao mesmo tempo):
+
+```bash
+python src/publisher.py --id pub1 --repetir 10
+python src/publisher.py --id pub2 --repetir 10
+```
+
+Logs: os dois clientes escrevem os logs no stderr (conexão, bindings, publicação, entrega e descarte, seção 7), e as notícias exibidas ficam no stdout. Para guardar só os logs em arquivo, redirecione o stderr, por exemplo `2> evidencias/sub1.txt`. A validação com vários clientes está na seção 10.2.
 
 Rodar os testes unitários:
 
 ```bash
-# roda os testes do validador
+# roda os testes do validador, dos comandos, dos logs e do publisher
 python -m unittest discover -s testes -v
 ```
 
@@ -324,7 +397,9 @@ docker compose down
 docker compose down -v
 ```
 
-## 10. Validação da comunicação básica
+## 10. Validação
+
+### 10.1 Comunicação básica (Entrega 1)
 
 Verificado com Docker 29.9.2, Docker Compose 5.6.1, RabbitMQ 4.4.0 (imagem `rabbitmq:4-management`), Python 3.14.8 e pika 1.3.2. A captura de tela da interface de management ainda está pendente.
 
@@ -333,7 +408,7 @@ O teste usa a routing key `teste`. Um subscriber mínimo (`--id sub1 --assinar t
 Passo a passo:
 
 1. Subir o broker com `docker compose up -d` e conferir o container com `docker compose ps`. Resultado: container `rabbitmq` com status `Up` e as portas 5672 e 15672 publicadas.
-2. Rodar os testes unitários com `python -m unittest discover -s testes -v`. Resultado: 26 testes, todos com `OK`.
+2. Rodar os testes unitários com `python -m unittest discover -s testes -v`. Resultado na Entrega 1: 26 testes, todos com `OK`.
 3. Iniciar o subscriber mínimo.
 4. Publicar uma mensagem de teste com o publisher mínimo.
 5. Confirmar que o subscriber mostrou a mensagem no terminal.
@@ -390,3 +465,143 @@ Aguardando notícias (Ctrl+C para sair).
 [teste] Offline 2
     Segunda mensagem enviada com o subscriber parado.
 ```
+
+### 10.2 Vários publishers e subscribers ao mesmo tempo (Entrega 2)
+
+Objetivo: mostrar que, com vários clientes rodando juntos, cada subscriber recebe só as categorias que assinou, e que assinar e cancelar durante a execução muda o que chega, sem reiniciar o cliente.
+
+Status: o roteiro está escrito e o código foi testado com os testes unitários (seção 11), mas a execução contra o RabbitMQ real e a coleta dos logs são da tarefa T4 e ainda estão pendentes. As tabelas de resultado abaixo devem ser preenchidas com a saída real.
+
+Preparação (na raiz do repositório, com o broker no ar e o ambiente virtual ativo):
+
+```bash
+docker compose down -v && docker compose up -d   # zera filas e bindings
+mkdir -p evidencias
+```
+
+Os logs vão para o stderr, então cada terminal usa `2> >(tee ... >&2)` (bash) para mostrar no console e guardar em arquivo. Os arquivos usam a extensão `.txt` porque o `.gitignore` ignora `*.log`. O `#` precisa de aspas na linha de comando, senão o shell o trata como comentário.
+
+Cenário:
+
+| Terminal | Cliente                | Assinaturas iniciais   |
+| -------- | ---------------------- | ---------------------- |
+| 1        | subscriber `sub1`      | `esportes`             |
+| 2        | subscriber `sub2`      | `tecnologia`, `cultura` |
+| 3        | subscriber `sub3`      | `#`                    |
+| 4        | publisher `pub1`       | (publica 20 notícias)  |
+| 5        | publisher `pub2`       | (publica 20 notícias)  |
+
+Passos:
+
+1. Subir os três subscribers, um em cada terminal:
+
+```bash
+# terminal 1
+python src/subscriber.py --id sub1 --assinar esportes 2> >(tee evidencias/sub1.txt >&2)
+
+# terminal 2
+python src/subscriber.py --id sub2 --assinar tecnologia --assinar cultura 2> >(tee evidencias/sub2.txt >&2)
+
+# terminal 3
+python src/subscriber.py --id sub3 --assinar '#' 2> >(tee evidencias/sub3.txt >&2)
+```
+
+2. Subir os dois publishers quase juntos (cada um publica por cerca de 20 segundos):
+
+```bash
+# terminal 4
+python src/publisher.py --id pub1 --repetir 20 2> >(tee evidencias/pub1.txt >&2)
+
+# terminal 5
+python src/publisher.py --id pub2 --repetir 20 2> >(tee evidencias/pub2.txt >&2)
+```
+
+3. No meio da publicação (por volta da décima notícia), digitar nos subscribers:
+
+```text
+# terminal 1 (sub1)
+> assinar cultura
+
+# terminal 2 (sub2)
+> cancelar cultura
+```
+
+4. Esperar os publishers terminarem e digitar `listar` e `sair` em cada subscriber.
+
+Conferência pelo id e pelos horários dos logs (todos os comandos abaixo rodam na raiz do repositório):
+
+```bash
+# quantas entregas cada subscriber teve, por categoria
+for s in sub1 sub2 sub3; do echo "== $s"; grep ' entrega ' evidencias/$s.txt | sed 's/.*categoria=//' | sort | uniq -c; done
+
+# total publicado por categoria (os dois publishers juntos)
+grep -h ' publicacao ' evidencias/pub1.txt evidencias/pub2.txt | sed 's/.*categoria=//' | sort | uniq -c
+
+# horário dos binding_criado e binding_removido feitos no meio da execução
+grep -h 'binding_' evidencias/sub1.txt evidencias/sub2.txt
+
+# seguir uma notícia do envio até as entregas (trocar pelo id escolhido)
+grep -h 'id=<ID-DA-NOTICIA>' evidencias/*.txt
+```
+
+Resultado esperado:
+
+| Cliente | Antes do comando                 | Depois do comando                                                          |
+| ------- | -------------------------------- | -------------------------------------------------------------------------- |
+| `sub1`  | só `esportes`                    | `esportes` e `cultura` (cultura só a partir do `binding_criado`)           |
+| `sub2`  | `tecnologia` e `cultura`         | só `tecnologia` (nenhuma cultura nova depois do `binding_removido`)        |
+| `sub3`  | todas as categorias              | todas as categorias, sem mudança                                           |
+
+Observação: mensagens que já estavam na fila (ou já entregues ao cliente com prefetch 1) quando o comando foi dado ainda podem chegar logo depois do `cancelar`, como descrito na seção 7. Essas entregas devem ser comparadas com o horário do `binding_removido`.
+
+Resultado obtido (a preencher pela T4 depois de executar):
+
+| Item                                                       | Resultado |
+| ---------------------------------------------------------- | --------- |
+| Total de notícias publicadas por `pub1` e `pub2`           | pendente  |
+| Entregas de `sub1` por categoria                           | pendente  |
+| Entregas de `sub2` por categoria                           | pendente  |
+| Entregas de `sub3` por categoria                           | pendente  |
+| Nenhuma entrega fora das categorias assinadas              | pendente  |
+| Efeito do `assinar cultura` em `sub1`                      | pendente  |
+| Efeito do `cancelar cultura` em `sub2`                     | pendente  |
+| Captura de tela da interface de management (`evidencias/`) | pendente  |
+
+Evidências: os arquivos `evidencias/pub1.txt`, `evidencias/pub2.txt`, `evidencias/sub1.txt`, `evidencias/sub2.txt` e `evidencias/sub3.txt`, e a captura de tela da interface de management (filas `fila.sub1`, `fila.sub2` e `fila.sub3` com seus bindings), pendente desde a Entrega 1.
+
+## 11. Status
+
+Implementado na Entrega 2:
+
+- Subscriber interativo: `assinar`, `cancelar`, `listar` e `sair`, com consumo e comandos ao mesmo tempo (seção 7).
+- Remoção dos bindings antigos na partida do subscriber, no lugar das opções A e B.
+- Logs de conexão, binding, publicação, entrega e descarte nos dois clientes (seção 7).
+- Publisher com `--id` e modo repetido (`--repetir N`), mantendo o modo de uma notícia por execução.
+- Testes unitários dos comandos, dos logs e dos argumentos do publisher, além dos 26 testes do validador (56 no total).
+
+Pendente:
+
+- Executar o roteiro da seção 10.2 com o broker real, guardar os logs em `evidencias/` e preencher a tabela de resultados.
+- Tirar a captura de tela da interface de management.
+- Registrar a evidência do teste extra (b), do reinício do broker, citado na seção 6, e a verificação do comportamento do `#` citada na seção 4. Os dois estavam citados no texto, mas o resultado não está documentado na seção 10.1.
+- Confirmar com o professor se vários processos do publisher em terminais separados contam como múltiplos publishers simultâneos.
+- Conferir no primeiro teste real que o RabbitMQ aceita remover um binding que não existe, sem erro (a limpeza da partida depende disso).
+
+## 12. Próximos passos
+
+Itens que não foram pedidos no enunciado e ficaram de fora para manter o trabalho no mínimo:
+
+- Recuperar as assinaturas de uma execução anterior (opções A e B da seção 7).
+- Encerrar o consumo de forma organizada, com `add_callback_threadsafe`.
+- Detectar a queda do broker e reconectar.
+- Script automático de teste com vários clientes.
+- Evitar que uma notícia impressa se misture com a linha que o usuário está digitando.
+
+## 13. Referências
+
+- RabbitMQ, tutorial 5 (Topics), em Python: https://www.rabbitmq.com/tutorials/tutorial-five-python
+- RabbitMQ, documentação de exchanges, filas, confirmações do publisher e acks do consumidor: https://www.rabbitmq.com/docs
+- pika, documentação: https://pika.readthedocs.io/
+- Python, módulo `threading`: https://docs.python.org/3/library/threading.html
+- Python, módulo `logging`: https://docs.python.org/3/library/logging.html
+- Python, módulo `unittest`: https://docs.python.org/3/library/unittest.html
