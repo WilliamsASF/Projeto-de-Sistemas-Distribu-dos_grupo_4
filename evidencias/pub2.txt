@@ -1,0 +1,24 @@
+2026-11-22 19:26:17 INFO publisher.pub2 conexao estado=conectado host=localhost port=5672
+2026-11-22 19:26:17 INFO publisher.pub2 publicacao id=10007f78-9714-4b3e-8366-cb35c68aff02 categoria=tecnologia
+2026-11-22 19:26:18 INFO publisher.pub2 publicacao id=5ed7153c-c8c7-40d6-b7ea-55dd2778f29e categoria=esportes
+2026-11-22 19:26:19 INFO publisher.pub2 publicacao id=2b571dd5-7565-426e-a1ed-39811c8e7520 categoria=tecnologia
+2026-11-22 19:26:20 INFO publisher.pub2 publicacao id=34cdd8eb-1f24-44b8-aef5-127dfe65d73e categoria=tecnologia
+2026-11-22 19:26:21 INFO publisher.pub2 publicacao id=de45ca76-7d3c-446e-9d1c-81d799248c28 categoria=cultura
+2026-11-22 19:26:22 INFO publisher.pub2 publicacao id=3de17e64-3f50-482a-a693-43e7b2c9ac6f categoria=tecnologia
+2026-11-22 19:26:23 INFO publisher.pub2 publicacao id=9c4a0915-f16e-40e7-b763-ec13c4d145a1 categoria=cultura
+2026-11-22 19:26:24 INFO publisher.pub2 publicacao id=a8fd3674-8941-48e8-a408-2aa6a046c43c categoria=cultura
+2026-11-22 19:26:25 INFO publisher.pub2 publicacao id=027659e2-ed1e-42bc-a821-65c6d86be3a3 categoria=cultura
+2026-11-22 19:26:26 INFO publisher.pub2 publicacao id=cf4eb88b-505a-4a81-ad76-ecf507e61554 categoria=esportes
+2026-11-22 19:26:26 INFO publisher.pub2 conexao estado=desconectado host=localhost port=5672
+2026-11-22 19:28:02 INFO publisher.pub2 conexao estado=conectado host=localhost port=5672
+2026-11-22 19:28:02 INFO publisher.pub2 publicacao id=a850f120-117f-46d7-9220-3e6de17defa7 categoria=cultura
+2026-11-22 19:28:03 INFO publisher.pub2 publicacao id=f9eca884-a1d1-423b-a3f7-5167f3d29c66 categoria=tecnologia
+2026-11-22 19:28:04 INFO publisher.pub2 publicacao id=32df6679-2585-4225-a8e4-efe817d33f85 categoria=esportes
+2026-11-22 19:28:05 INFO publisher.pub2 publicacao id=4d4ed4e9-2b9b-4c33-8c28-d404d6bc9087 categoria=cultura
+2026-11-22 19:28:06 INFO publisher.pub2 publicacao id=ca9e34c1-8515-4b04-b48a-780552ab98fd categoria=tecnologia
+2026-11-22 19:28:07 INFO publisher.pub2 publicacao id=85190dac-87c9-4dae-bfcd-1514ff2a1d7e categoria=tecnologia
+2026-11-22 19:28:08 INFO publisher.pub2 publicacao id=81525726-3bf8-4517-97ec-27123f0bb405 categoria=tecnologia
+2026-11-22 19:28:09 INFO publisher.pub2 publicacao id=8f6a68e8-9b1f-42db-831f-aecaa72e0215 categoria=cultura
+2026-11-22 19:28:10 INFO publisher.pub2 publicacao id=1fa1919e-670f-439a-adf6-a63e47673f64 categoria=tecnologia
+2026-11-22 19:28:11 INFO publisher.pub2 publicacao id=2ed1d9e6-2bfc-4a67-8e74-4adb0d37aea9 categoria=tecnologia
+2026-11-22 19:28:11 INFO publisher.pub2 conexao estado=desconectado host=localhost port=5672

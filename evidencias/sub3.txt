@@ -1,0 +1,44 @@
+2026-11-22 19:25:55 INFO subscriber.sub3 limpeza_bindings fila=fila.sub3 (bindings antigos removidos)
+2026-11-22 19:25:55 INFO subscriber.sub3 binding_criado fila=fila.sub3 padrao=#
+> 2026-11-22 19:25:55 INFO subscriber.sub3 conexao estado=conectado host=localhost port=5672
+2026-11-22 19:26:17 INFO subscriber.sub3 entrega id=10007f78-9714-4b3e-8366-cb35c68aff02 categoria=tecnologia
+2026-11-22 19:26:18 INFO subscriber.sub3 entrega id=c4a9b0c5-819c-4240-a705-c302e2b2b2fa categoria=tecnologia
+2026-11-22 19:26:18 INFO subscriber.sub3 entrega id=5ed7153c-c8c7-40d6-b7ea-55dd2778f29e categoria=esportes
+2026-11-22 19:26:19 INFO subscriber.sub3 entrega id=bea8dd5d-c2cf-430f-8631-5c091e6eb5b8 categoria=tecnologia
+2026-11-22 19:26:19 INFO subscriber.sub3 entrega id=2b571dd5-7565-426e-a1ed-39811c8e7520 categoria=tecnologia
+2026-11-22 19:26:20 INFO subscriber.sub3 entrega id=6890bdf2-42bd-41ca-854e-df2896e50040 categoria=cultura
+2026-11-22 19:26:20 INFO subscriber.sub3 entrega id=34cdd8eb-1f24-44b8-aef5-127dfe65d73e categoria=tecnologia
+2026-11-22 19:26:21 INFO subscriber.sub3 entrega id=eaf6a13a-fe73-4955-86e4-5b64bb747ff4 categoria=tecnologia
+2026-11-22 19:26:21 INFO subscriber.sub3 entrega id=de45ca76-7d3c-446e-9d1c-81d799248c28 categoria=cultura
+2026-11-22 19:26:22 INFO subscriber.sub3 entrega id=bedb3c33-9b4f-4260-a124-ca00a3fab697 categoria=tecnologia
+2026-11-22 19:26:22 INFO subscriber.sub3 entrega id=3de17e64-3f50-482a-a693-43e7b2c9ac6f categoria=tecnologia
+2026-11-22 19:26:23 INFO subscriber.sub3 entrega id=87cdf8c4-77f4-48b8-8989-cb807c933ce1 categoria=esportes
+2026-11-22 19:26:23 INFO subscriber.sub3 entrega id=9c4a0915-f16e-40e7-b763-ec13c4d145a1 categoria=cultura
+2026-11-22 19:26:24 INFO subscriber.sub3 entrega id=05e1b52c-d1a9-49b1-91af-fb8ef7da9e9f categoria=esportes
+2026-11-22 19:26:24 INFO subscriber.sub3 entrega id=a8fd3674-8941-48e8-a408-2aa6a046c43c categoria=cultura
+2026-11-22 19:26:25 INFO subscriber.sub3 entrega id=3768b51b-ef47-4545-a438-de495277621b categoria=cultura
+2026-11-22 19:26:25 INFO subscriber.sub3 entrega id=027659e2-ed1e-42bc-a821-65c6d86be3a3 categoria=cultura
+2026-11-22 19:26:26 INFO subscriber.sub3 entrega id=010795d3-169a-4425-a138-106a93ae9f27 categoria=esportes
+2026-11-22 19:26:26 INFO subscriber.sub3 entrega id=cf4eb88b-505a-4a81-ad76-ecf507e61554 categoria=esportes
+2026-11-22 19:26:27 INFO subscriber.sub3 entrega id=0be26104-1594-4ebc-a690-31a4c9724eff categoria=esportes
+2026-11-22 19:28:01 INFO subscriber.sub3 entrega id=3574502f-c2bf-4d9f-a191-09c54fff1111 categoria=cultura
+2026-11-22 19:28:02 INFO subscriber.sub3 entrega id=a850f120-117f-46d7-9220-3e6de17defa7 categoria=cultura
+2026-11-22 19:28:02 INFO subscriber.sub3 entrega id=88cc9ddd-acdd-4a18-8d28-241338e45cc4 categoria=cultura
+2026-11-22 19:28:03 INFO subscriber.sub3 entrega id=f9eca884-a1d1-423b-a3f7-5167f3d29c66 categoria=tecnologia
+2026-11-22 19:28:03 INFO subscriber.sub3 entrega id=c1d9ac51-dd91-49c2-adba-c39ab382c085 categoria=esportes
+2026-11-22 19:28:04 INFO subscriber.sub3 entrega id=32df6679-2585-4225-a8e4-efe817d33f85 categoria=esportes
+2026-11-22 19:28:04 INFO subscriber.sub3 entrega id=e6563c0e-2a2c-428d-8e7e-4578fb29826d categoria=esportes
+2026-11-22 19:28:05 INFO subscriber.sub3 entrega id=4d4ed4e9-2b9b-4c33-8c28-d404d6bc9087 categoria=cultura
+2026-11-22 19:28:05 INFO subscriber.sub3 entrega id=00519121-90a4-49ef-ab4c-0bac2aa7e3f7 categoria=tecnologia
+2026-11-22 19:28:06 INFO subscriber.sub3 entrega id=ca9e34c1-8515-4b04-b48a-780552ab98fd categoria=tecnologia
+2026-11-22 19:28:07 INFO subscriber.sub3 entrega id=e9561d99-13ee-48f1-804d-58320f1a04ad categoria=cultura
+2026-11-22 19:28:07 INFO subscriber.sub3 entrega id=85190dac-87c9-4dae-bfcd-1514ff2a1d7e categoria=tecnologia
+2026-11-22 19:28:08 INFO subscriber.sub3 entrega id=6e8481bc-cab7-46d1-b08a-b7cb225ef6f7 categoria=esportes
+2026-11-22 19:28:08 INFO subscriber.sub3 entrega id=81525726-3bf8-4517-97ec-27123f0bb405 categoria=tecnologia
+2026-11-22 19:28:09 INFO subscriber.sub3 entrega id=59cf3f5c-8232-4824-a525-8251be9b0226 categoria=esportes
+2026-11-22 19:28:09 INFO subscriber.sub3 entrega id=8f6a68e8-9b1f-42db-831f-aecaa72e0215 categoria=cultura
+2026-11-22 19:28:10 INFO subscriber.sub3 entrega id=77eb163b-9084-4ddc-a397-4ea50155d907 categoria=cultura
+2026-11-22 19:28:10 INFO subscriber.sub3 entrega id=1fa1919e-670f-439a-adf6-a63e47673f64 categoria=tecnologia
+2026-11-22 19:28:11 INFO subscriber.sub3 entrega id=f73a97b4-2c5a-4944-82c7-106f645f5114 categoria=esportes
+2026-11-22 19:28:11 INFO subscriber.sub3 entrega id=2ed1d9e6-2bfc-4a67-8e74-4adb0d37aea9 categoria=tecnologia
+> 2026-11-22 19:29:00 INFO subscriber.sub3 conexao estado=desconectado host=localhost port=5672

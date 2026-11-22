@@ -1,0 +1,27 @@
+2026-11-22 19:26:05 INFO subscriber.sub2 limpeza_bindings fila=fila.sub2 (bindings antigos removidos)
+2026-11-22 19:26:05 INFO subscriber.sub2 binding_criado fila=fila.sub2 padrao=tecnologia
+2026-11-22 19:26:05 INFO subscriber.sub2 binding_criado fila=fila.sub2 padrao=cultura
+> 2026-11-22 19:26:05 INFO subscriber.sub2 conexao estado=conectado host=localhost port=5672
+2026-11-22 19:26:17 INFO subscriber.sub2 entrega id=10007f78-9714-4b3e-8366-cb35c68aff02 categoria=tecnologia
+2026-11-22 19:26:18 INFO subscriber.sub2 entrega id=c4a9b0c5-819c-4240-a705-c302e2b2b2fa categoria=tecnologia
+2026-11-22 19:26:19 INFO subscriber.sub2 entrega id=bea8dd5d-c2cf-430f-8631-5c091e6eb5b8 categoria=tecnologia
+2026-11-22 19:26:19 INFO subscriber.sub2 entrega id=2b571dd5-7565-426e-a1ed-39811c8e7520 categoria=tecnologia
+2026-11-22 19:26:20 INFO subscriber.sub2 entrega id=6890bdf2-42bd-41ca-854e-df2896e50040 categoria=cultura
+2026-11-22 19:26:20 INFO subscriber.sub2 entrega id=34cdd8eb-1f24-44b8-aef5-127dfe65d73e categoria=tecnologia
+2026-11-22 19:26:21 INFO subscriber.sub2 entrega id=eaf6a13a-fe73-4955-86e4-5b64bb747ff4 categoria=tecnologia
+2026-11-22 19:26:21 INFO subscriber.sub2 entrega id=de45ca76-7d3c-446e-9d1c-81d799248c28 categoria=cultura
+2026-11-22 19:26:22 INFO subscriber.sub2 entrega id=bedb3c33-9b4f-4260-a124-ca00a3fab697 categoria=tecnologia
+2026-11-22 19:26:22 INFO subscriber.sub2 entrega id=3de17e64-3f50-482a-a693-43e7b2c9ac6f categoria=tecnologia
+2026-11-22 19:26:23 INFO subscriber.sub2 entrega id=9c4a0915-f16e-40e7-b763-ec13c4d145a1 categoria=cultura
+2026-11-22 19:26:24 INFO subscriber.sub2 entrega id=a8fd3674-8941-48e8-a408-2aa6a046c43c categoria=cultura
+2026-11-22 19:26:25 INFO subscriber.sub2 entrega id=3768b51b-ef47-4545-a438-de495277621b categoria=cultura
+2026-11-22 19:26:25 INFO subscriber.sub2 entrega id=027659e2-ed1e-42bc-a821-65c6d86be3a3 categoria=cultura
+2026-11-22 19:27:19 INFO subscriber.sub2 binding_removido fila=fila.sub2 padrao=cultura
+> > > 2026-11-22 19:28:03 INFO subscriber.sub2 entrega id=f9eca884-a1d1-423b-a3f7-5167f3d29c66 categoria=tecnologia
+2026-11-22 19:28:05 INFO subscriber.sub2 entrega id=00519121-90a4-49ef-ab4c-0bac2aa7e3f7 categoria=tecnologia
+2026-11-22 19:28:06 INFO subscriber.sub2 entrega id=ca9e34c1-8515-4b04-b48a-780552ab98fd categoria=tecnologia
+2026-11-22 19:28:07 INFO subscriber.sub2 entrega id=85190dac-87c9-4dae-bfcd-1514ff2a1d7e categoria=tecnologia
+2026-11-22 19:28:08 INFO subscriber.sub2 entrega id=81525726-3bf8-4517-97ec-27123f0bb405 categoria=tecnologia
+2026-11-22 19:28:10 INFO subscriber.sub2 entrega id=1fa1919e-670f-439a-adf6-a63e47673f64 categoria=tecnologia
+2026-11-22 19:28:11 INFO subscriber.sub2 entrega id=2ed1d9e6-2bfc-4a67-8e74-4adb0d37aea9 categoria=tecnologia
+> 2026-11-22 19:28:55 INFO subscriber.sub2 conexao estado=desconectado host=localhost port=5672

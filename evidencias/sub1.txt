@@ -1,0 +1,24 @@
+2026-11-22 19:25:46 INFO subscriber.sub1 limpeza_bindings fila=fila.sub1 (bindings antigos removidos)
+2026-11-22 19:25:46 INFO subscriber.sub1 binding_criado fila=fila.sub1 padrao=esportes
+> 2026-11-22 19:25:46 INFO subscriber.sub1 conexao estado=conectado host=localhost port=5672
+2026-11-22 19:26:18 INFO subscriber.sub1 entrega id=5ed7153c-c8c7-40d6-b7ea-55dd2778f29e categoria=esportes
+2026-11-22 19:26:23 INFO subscriber.sub1 entrega id=87cdf8c4-77f4-48b8-8989-cb807c933ce1 categoria=esportes
+2026-11-22 19:26:24 INFO subscriber.sub1 entrega id=05e1b52c-d1a9-49b1-91af-fb8ef7da9e9f categoria=esportes
+2026-11-22 19:26:26 INFO subscriber.sub1 entrega id=010795d3-169a-4425-a138-106a93ae9f27 categoria=esportes
+2026-11-22 19:26:26 INFO subscriber.sub1 entrega id=cf4eb88b-505a-4a81-ad76-ecf507e61554 categoria=esportes
+2026-11-22 19:26:27 INFO subscriber.sub1 entrega id=0be26104-1594-4ebc-a690-31a4c9724eff categoria=esportes
+2026-11-22 19:27:06 INFO subscriber.sub1 binding_criado fila=fila.sub1 padrao=cultura
+> > > 2026-11-22 19:28:01 INFO subscriber.sub1 entrega id=3574502f-c2bf-4d9f-a191-09c54fff1111 categoria=cultura
+2026-11-22 19:28:02 INFO subscriber.sub1 entrega id=a850f120-117f-46d7-9220-3e6de17defa7 categoria=cultura
+2026-11-22 19:28:02 INFO subscriber.sub1 entrega id=88cc9ddd-acdd-4a18-8d28-241338e45cc4 categoria=cultura
+2026-11-22 19:28:03 INFO subscriber.sub1 entrega id=c1d9ac51-dd91-49c2-adba-c39ab382c085 categoria=esportes
+2026-11-22 19:28:04 INFO subscriber.sub1 entrega id=32df6679-2585-4225-a8e4-efe817d33f85 categoria=esportes
+2026-11-22 19:28:04 INFO subscriber.sub1 entrega id=e6563c0e-2a2c-428d-8e7e-4578fb29826d categoria=esportes
+2026-11-22 19:28:05 INFO subscriber.sub1 entrega id=4d4ed4e9-2b9b-4c33-8c28-d404d6bc9087 categoria=cultura
+2026-11-22 19:28:07 INFO subscriber.sub1 entrega id=e9561d99-13ee-48f1-804d-58320f1a04ad categoria=cultura
+2026-11-22 19:28:08 INFO subscriber.sub1 entrega id=6e8481bc-cab7-46d1-b08a-b7cb225ef6f7 categoria=esportes
+2026-11-22 19:28:09 INFO subscriber.sub1 entrega id=59cf3f5c-8232-4824-a525-8251be9b0226 categoria=esportes
+2026-11-22 19:28:09 INFO subscriber.sub1 entrega id=8f6a68e8-9b1f-42db-831f-aecaa72e0215 categoria=cultura
+2026-11-22 19:28:10 INFO subscriber.sub1 entrega id=77eb163b-9084-4ddc-a397-4ea50155d907 categoria=cultura
+2026-11-22 19:28:11 INFO subscriber.sub1 entrega id=f73a97b4-2c5a-4944-82c7-106f645f5114 categoria=esportes
+> 2026-11-22 19:28:50 INFO subscriber.sub1 conexao estado=desconectado host=localhost port=5672
