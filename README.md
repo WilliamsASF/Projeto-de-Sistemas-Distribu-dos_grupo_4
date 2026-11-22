@@ -272,7 +272,13 @@ O id da notícia aparece no log do publisher e no de cada subscriber que a receb
 ├── compose.yaml
 ├── requirements.txt
 ├── evidencias
-│   └── .gitkeep
+│   ├── .gitkeep
+│   ├── pub1.txt
+│   ├── pub2.txt
+│   ├── rabbitmq_bindings.png
+│   ├── sub1.txt
+│   ├── sub2.txt
+│   └── sub3.txt
 ├── src
 │   ├── config.py
 │   ├── logs.py
@@ -383,7 +389,7 @@ Interface de management (portas e credenciais definidas no `compose.yaml`):
 - Usuário: admin
 - Senha: admin
 
-A API HTTP respondeu a esse login durante a validação. A tela web não foi aberta (ver seção 10).
+A API HTTP respondeu a esse login durante a validação. A tela web foi aberta na validação da seção 10.2, e a captura está em `evidencias/rabbitmq_bindings.png`.
 
 Parâmetros de conexão: host `localhost`, porta 5672, usuário `admin` e senha `admin`. Esses valores estão escritos diretamente em `src/config.py`, e valem só para o ambiente local desta disciplina.
 
@@ -401,7 +407,7 @@ docker compose down -v
 
 ### 10.1 Comunicação básica (Entrega 1)
 
-Verificado com Docker 29.9.2, Docker Compose 5.6.1, RabbitMQ 4.4.0 (imagem `rabbitmq:4-management`), Python 3.14.8 e pika 1.3.2. A captura de tela da interface de management ainda está pendente.
+Verificado com Docker 29.9.2, Docker Compose 5.6.1, RabbitMQ 4.4.0 (imagem `rabbitmq:4-management`), Python 3.14.8 e pika 1.3.2. A captura de tela da interface de management foi feita na validação da seção 10.2 (`evidencias/rabbitmq_bindings.png`).
 
 O teste usa a routing key `teste`. Um subscriber mínimo (`--id sub1 --assinar teste`) assina essa routing key e um publisher mínimo publica uma mensagem nela. Os terminais foram executados em segundo plano, por isso a saída do subscriber foi lida de um arquivo de log.
 
@@ -596,18 +602,16 @@ Evidências: `evidencias/pub1.txt`, `pub2.txt`, `sub1.txt`, `sub2.txt`, `sub3.tx
 Implementado na Entrega 2:
 
 - Subscriber interativo: `assinar`, `cancelar`, `listar` e `sair`, com consumo e comandos ao mesmo tempo (seção 7).
-- Remoção dos bindings antigos na partida do subscriber, no lugar das opções A e B.
+- Remoção dos bindings antigos na partida do subscriber, no lugar das opções A e B. Na validação, a limpeza rodou sem erro nos três subscribers, mesmo com os bindings ainda inexistentes.
 - Logs de conexão, binding, publicação, entrega e descarte nos dois clientes (seção 7).
 - Publisher com `--id` e modo repetido (`--repetir N`), mantendo o modo de uma notícia por execução.
 - Testes unitários dos comandos, dos logs e dos argumentos do publisher, além dos 26 testes do validador (56 no total).
+- Validação com vários publishers e subscribers contra o RabbitMQ real, com logs e captura de tela em `evidencias/` (seção 10.2). Cada subscriber recebeu só as categorias assinadas, e o `assinar` e o `cancelar` mudaram o que chega sem reiniciar o cliente.
 
 Pendente:
 
-- Executar o roteiro da seção 10.2 com o broker real, guardar os logs em `evidencias/` e preencher a tabela de resultados.
-- Tirar a captura de tela da interface de management.
-- Registrar a evidência do teste extra (b), do reinício do broker, citado na seção 6, e a verificação do comportamento do `#` citada na seção 4. Os dois estavam citados no texto, mas o resultado não está documentado na seção 10.1.
+- Registrar a evidência do teste extra (b), do reinício do broker, citado na seção 6, e a verificação do comportamento do `#` citada na seção 4. Os dois estão citados no texto, mas o resultado não está documentado na seção 10.1.
 - Confirmar com o professor se vários processos do publisher em terminais separados contam como múltiplos publishers simultâneos.
-- Conferir no primeiro teste real que o RabbitMQ aceita remover um binding que não existe, sem erro (a limpeza da partida depende disso).
 
 ## 12. Próximos passos
 
