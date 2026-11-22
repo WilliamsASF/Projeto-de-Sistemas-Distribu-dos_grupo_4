@@ -470,7 +470,7 @@ Aguardando notícias (Ctrl+C para sair).
 
 Objetivo: mostrar que, com vários clientes rodando juntos, cada subscriber recebe só as categorias que assinou, e que assinar e cancelar durante a execução muda o que chega, sem reiniciar o cliente.
 
-Status: o roteiro está escrito e o código foi testado com os testes unitários (seção 11), mas a execução contra o RabbitMQ real e a coleta dos logs são da tarefa T4 e ainda estão pendentes. As tabelas de resultado abaixo devem ser preenchidas com a saída real.
+Status: o roteiro foi executado contra o RabbitMQ real em 22/11/2026, e os logs e a captura de tela estão em `evidencias/`. Os resultados estão no final desta seção.
 
 Preparação (na raiz do repositório, com o broker no ar e o ambiente virtual ativo):
 
@@ -506,43 +506,39 @@ python src/subscriber.py --id sub2 --assinar tecnologia --assinar cultura 2> >(t
 python src/subscriber.py --id sub3 --assinar '#' 2> >(tee evidencias/sub3.txt >&2)
 ```
 
-2. Subir os dois publishers quase juntos (cada um publica por cerca de 20 segundos):
+2. Rodada 1: subir os dois publishers quase juntos (cada um publica 10 notícias, uma por segundo) e esperar que terminem:
 
 ```bash
 # terminal 4
-python src/publisher.py --id pub1 --repetir 20 2> >(tee evidencias/pub1.txt >&2)
+python src/publisher.py --id pub1 --repetir 10 2> >(tee evidencias/pub1.txt >&2)
 
 # terminal 5
-python src/publisher.py --id pub2 --repetir 20 2> >(tee evidencias/pub2.txt >&2)
+python src/publisher.py --id pub2 --repetir 10 2> >(tee evidencias/pub2.txt >&2)
 ```
 
-3. No meio da publicação (por volta da décima notícia), digitar nos subscribers:
+3. Com os publishers parados, digitar nos subscribers:
 
 ```text
 # terminal 1 (sub1)
 > assinar cultura
+> listar
 
 # terminal 2 (sub2)
 > cancelar cultura
+> listar
 ```
 
-4. Esperar os publishers terminarem e digitar `listar` e `sair` em cada subscriber.
-
-Conferência pelo id e pelos horários dos logs (todos os comandos abaixo rodam na raiz do repositório):
+4. Rodada 2: subir os publishers de novo, acrescentando ao mesmo arquivo de log (`tee -a`):
 
 ```bash
-# quantas entregas cada subscriber teve, por categoria
-for s in sub1 sub2 sub3; do echo "== $s"; grep ' entrega ' evidencias/$s.txt | sed 's/.*categoria=//' | sort | uniq -c; done
+# terminal 4
+python src/publisher.py --id pub1 --repetir 10 2> >(tee -a evidencias/pub1.txt >&2)
 
-# total publicado por categoria (os dois publishers juntos)
-grep -h ' publicacao ' evidencias/pub1.txt evidencias/pub2.txt | sed 's/.*categoria=//' | sort | uniq -c
-
-# horário dos binding_criado e binding_removido feitos no meio da execução
-grep -h 'binding_' evidencias/sub1.txt evidencias/sub2.txt
-
-# seguir uma notícia do envio até as entregas (trocar pelo id escolhido)
-grep -h 'id=<ID-DA-NOTICIA>' evidencias/*.txt
+# terminal 5
+python src/publisher.py --id pub2 --repetir 10 2> >(tee -a evidencias/pub2.txt >&2)
 ```
+
+5. Esperar os publishers terminarem e digitar `listar` e `sair` em cada subscriber.
 
 Resultado esperado:
 
@@ -554,20 +550,46 @@ Resultado esperado:
 
 Observação: mensagens que já estavam na fila (ou já entregues ao cliente com prefetch 1) quando o comando foi dado ainda podem chegar logo depois do `cancelar`, como descrito na seção 7. Essas entregas devem ser comparadas com o horário do `binding_removido`.
 
-Resultado obtido (a preencher pela T4 depois de executar):
+Execução realizada (22/11/2026, com o broker zerado por `docker compose down -v`): foram iniciados os três subscribers e rodadas duas vezes os dois publishers, com 10 notícias cada (`--repetir 10`). As assinaturas foram alteradas entre as rodadas, com os publishers parados, para que os comandos não se misturassem com as notícias que chegam.
 
-| Item                                                       | Resultado |
-| ---------------------------------------------------------- | --------- |
-| Total de notícias publicadas por `pub1` e `pub2`           | pendente  |
-| Entregas de `sub1` por categoria                           | pendente  |
-| Entregas de `sub2` por categoria                           | pendente  |
-| Entregas de `sub3` por categoria                           | pendente  |
-| Nenhuma entrega fora das categorias assinadas              | pendente  |
-| Efeito do `assinar cultura` em `sub1`                      | pendente  |
-| Efeito do `cancelar cultura` em `sub2`                     | pendente  |
-| Captura de tela da interface de management (`evidencias/`) | pendente  |
+| Etapa                                         | Horário (19:2x)     |
+| --------------------------------------------- | ------------------- |
+| Rodada 1 (pub1 e pub2)                        | 19:26:17 a 19:26:27 |
+| `assinar cultura` no sub1 (binding_criado)    | 19:27:06            |
+| `cancelar cultura` no sub2 (binding_removido) | 19:27:19            |
+| Rodada 2 (pub1 e pub2)                        | 19:28:01 a 19:28:11 |
 
-Evidências: os arquivos `evidencias/pub1.txt`, `evidencias/pub2.txt`, `evidencias/sub1.txt`, `evidencias/sub2.txt` e `evidencias/sub3.txt`, e a captura de tela da interface de management (filas `fila.sub1`, `fila.sub2` e `fila.sub3` com seus bindings), pendente desde a Entrega 1.
+Entregas por rodada (conferidas comparando o id de cada notícia publicada com as entregas de cada subscriber):
+
+| Cliente | Rodada 1 (antes dos comandos)                 | Rodada 2 (depois dos comandos)                |
+| ------- | --------------------------------------------- | --------------------------------------------- |
+| `sub1`  | 6 de esportes                                 | 6 de esportes e 7 de cultura                  |
+| `sub2`  | 8 de tecnologia e 6 de cultura                | 7 de tecnologia                               |
+| `sub3`  | 8 de tecnologia, 6 de esportes e 6 de cultura | 7 de tecnologia, 6 de esportes e 7 de cultura |
+
+Resultado obtido:
+
+| Item                                                       | Resultado                                                                                                    |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Total de notícias publicadas por `pub1` e `pub2`           | 40 (20 de cada): 15 de tecnologia, 13 de cultura e 12 de esportes                                            |
+| Entregas de `sub1` por categoria                           | 19: 12 de esportes e 7 de cultura                                                                            |
+| Entregas de `sub2` por categoria                           | 21: 15 de tecnologia e 6 de cultura                                                                          |
+| Entregas de `sub3` por categoria                           | 40: 15 de tecnologia, 13 de cultura e 12 de esportes                                                         |
+| Nenhuma entrega fora das categorias assinadas              | Confirmado. Não houve entrega extra nem entrega faltando em nenhum subscriber                                |
+| Efeito do `assinar cultura` em `sub1`                      | As 6 notícias de cultura da rodada 1 não chegaram. As 7 da rodada 2 chegaram                                 |
+| Efeito do `cancelar cultura` em `sub2`                     | As 6 de cultura da rodada 1 chegaram (a última às 19:26:25). As 7 da rodada 2 não chegaram                   |
+| Captura de tela da interface de management (`evidencias/`) | `rabbitmq_bindings.png`: `fila.sub1` com esportes e cultura, `fila.sub2` com tecnologia, `fila.sub3` com `#` |
+
+Exemplos de notícia seguida pelo id:
+
+- `6890bdf2-42bd-41ca-854e-df2896e50040` (cultura, rodada 1, publicada pelo `pub1` às 19:26:20): entregue ao `sub2` e ao `sub3`, e não ao `sub1`, que ainda não assinava cultura.
+- `3574502f-c2bf-4d9f-a191-09c54fff1111` (cultura, rodada 2, publicada pelo `pub1` às 19:28:01): entregue ao `sub1` e ao `sub3`, e não ao `sub2`, que já tinha cancelado cultura.
+
+Limite da validação: os comandos foram dados com os publishers parados. Por isso, o caso de uma notícia que já estava na fila no momento do `cancelar` (seção 7) não foi exercitado.
+
+Observação sobre os arquivos: alguns `>` aparecem no início de linhas dos logs dos subscribers. Eles são o prompt do `input()` e não afetam as linhas de log.
+
+Evidências: `evidencias/pub1.txt`, `pub2.txt`, `sub1.txt`, `sub2.txt`, `sub3.txt` e `evidencias/rabbitmq_bindings.png`.
 
 ## 11. Status
 
