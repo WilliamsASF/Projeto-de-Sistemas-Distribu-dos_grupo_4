@@ -13,6 +13,7 @@ import pika
 
 import config
 import gui_assinaturas
+import historico
 import logs
 import mensagem
 import subscriber
@@ -220,6 +221,17 @@ def main():
     raiz = tk.Tk()
     janela = JanelaSubscriber(raiz, args.id, recados)
     janela.avisar(f"Fila: {nome_fila}")
+
+    # preenche o feed com o historico salvo, antes da thread de consumo comecar
+    def historico_ilegivel(motivo):
+        log.error("historico_ilegivel id=%s detalhe=%s", args.id, motivo)
+        janela.avisar("Histórico ilegível, começando vazio", erro=True)
+
+    salvas = historico.carregar(args.id, ao_falhar=historico_ilegivel)
+    for msg in salvas:
+        janela.mostrar_noticia(msg)
+    if salvas:
+        janela.avisar(f"Fila: {nome_fila} | {len(salvas)} notícia(s) do histórico")
 
     painel = gui_assinaturas.montar_painel(
         janela.painel, parametros, nome_fila, log, janela.avisar, iniciais=padroes
