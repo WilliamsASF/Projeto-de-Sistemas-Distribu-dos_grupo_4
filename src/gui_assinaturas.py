@@ -35,6 +35,10 @@ class PainelAssinaturas:
             self.marcadas[padrao] = marcada
             self.caixas.append(caixa)
 
+    def habilitar(self, ligado=True):
+        for caixa in self.caixas:
+            caixa.state(["!disabled"] if ligado else ["disabled"])
+
     def alternar(self, padrao):
         # a caixinha ja mudou quando o comando roda, entao o valor dela diz o que fazer
         assinar = self.marcadas[padrao].get()

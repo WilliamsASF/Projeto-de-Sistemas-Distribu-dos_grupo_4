@@ -12,6 +12,7 @@ from tkinter import ttk
 import pika
 
 import config
+import gui_assinaturas
 import logs
 import mensagem
 import subscriber
@@ -110,6 +111,8 @@ class JanelaSubscriber:
         self.raiz = raiz
         self.recados = recados
         self.descartadas = 0
+        # funcao chamada quando a conexao fica verde (o painel usa para liberar as caixinhas)
+        self.ao_conectar = None
         raiz.title(f"Subscriber {id_subscriber}")
         raiz.geometry("820x520")
         raiz.minsize(600, 360)
@@ -181,6 +184,8 @@ class JanelaSubscriber:
         cor, texto = ESTADOS[estado]
         self.bolinha.itemconfigure(self.circulo, fill=cor)
         self.texto_estado.configure(text=texto)
+        if estado == "conectado" and self.ao_conectar is not None:
+            self.ao_conectar()
 
     def avisar(self, texto, erro=False):
         # mensagem na barra de status, em vermelho quando e erro
@@ -215,6 +220,14 @@ def main():
     raiz = tk.Tk()
     janela = JanelaSubscriber(raiz, args.id, recados)
     janela.avisar(f"Fila: {nome_fila}")
+
+    painel = gui_assinaturas.montar_painel(
+        janela.painel, parametros, nome_fila, log, janela.avisar, iniciais=padroes
+    )
+    # as caixinhas so liberam depois que a fila foi preparada,
+    # senao a limpeza inicial apagaria o que fosse marcado antes
+    painel.habilitar(False)
+    janela.ao_conectar = painel.habilitar
 
     # a thread encerra junto com a janela
     thread_consumo = threading.Thread(
