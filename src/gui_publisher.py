@@ -92,8 +92,22 @@ class JanelaPublisher:
                 foreground=COR_ERRO if len(texto) > limite else "",
             )
 
+    def montar_noticia(self):
+        # monta e valida antes de conectar, se for invalida mostra os erros e nao envia
+        msg = mensagem.criar_mensagem(
+            self.categoria.get(), self.texto_titulo.get().strip(), self.texto_resumo().strip()
+        )
+        erros = mensagem.validar_mensagem(msg)
+        if erros:
+            self.erros.configure(text="\n".join(f"- {erro}" for erro in erros))
+            return None
+        self.erros.configure(text="")
+        return msg
+
     def publicar(self):
-        pass
+        msg = self.montar_noticia()
+        if msg is None:
+            return
 
     def avisar(self, texto, erro=False):
         self.status.configure(text=texto, foreground=COR_ERRO if erro else COR_OK)
