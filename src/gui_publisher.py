@@ -43,13 +43,20 @@ class JanelaPublisher:
 
         # titulo: campo de uma linha
         ttk.Label(form, text="Título").grid(row=1, column=0, sticky="w", pady=4)
-        self.titulo = ttk.Entry(form)
+        self.texto_titulo = tk.StringVar()
+        self.titulo = ttk.Entry(form, textvariable=self.texto_titulo)
         self.titulo.grid(row=1, column=1, sticky="ew", pady=4)
+        self.contador_titulo = ttk.Label(form, width=8, anchor="e")
+        self.contador_titulo.grid(row=1, column=2, sticky="e", padx=(6, 0))
+        self.texto_titulo.trace_add("write", lambda *_: self.atualizar_contadores())
 
         # resumo: campo de varias linhas
         ttk.Label(form, text="Resumo").grid(row=2, column=0, sticky="nw", pady=4)
         self.resumo = tk.Text(form, height=6, wrap="word")
         self.resumo.grid(row=2, column=1, sticky="nsew", pady=4)
+        self.contador_resumo = ttk.Label(form, width=8, anchor="e")
+        self.contador_resumo.grid(row=2, column=2, sticky="ne", padx=(6, 0), pady=4)
+        self.resumo.bind("<<Modified>>", self.resumo_mudou)
 
         self.botao = ttk.Button(form, text="Publicar", command=self.publicar)
         self.botao.grid(row=3, column=1, sticky="e", pady=(8, 4))
@@ -62,7 +69,28 @@ class JanelaPublisher:
         self.status = ttk.Label(raiz, anchor="w", padding=(10, 4), relief="sunken")
         self.status.grid(row=1, column=0, sticky="ew")
 
+        self.atualizar_contadores()
         self.titulo.focus_set()
+
+    def texto_resumo(self):
+        # o Text sempre termina com uma quebra de linha extra
+        return self.resumo.get("1.0", "end-1c")
+
+    def resumo_mudou(self, evento):
+        self.atualizar_contadores()
+        # desliga a flag para o proximo <<Modified>> disparar
+        self.resumo.edit_modified(False)
+
+    def atualizar_contadores(self):
+        for contador, texto, limite in (
+            (self.contador_titulo, self.texto_titulo.get(), config.MAX_TITULO),
+            (self.contador_resumo, self.texto_resumo(), config.MAX_RESUMO),
+        ):
+            # fica vermelho quando passa do limite
+            contador.configure(
+                text=f"{len(texto)}/{limite}",
+                foreground=COR_ERRO if len(texto) > limite else "",
+            )
 
     def publicar(self):
         pass
