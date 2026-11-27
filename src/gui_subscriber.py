@@ -4,6 +4,7 @@ import json
 import queue
 import sys
 import threading
+import time
 import tkinter as tk
 from datetime import datetime
 from tkinter import ttk
@@ -18,11 +19,14 @@ import subscriber
 # intervalo (ms) entre as leituras da fila de recados
 INTERVALO_FILA_MS = 200
 
+# espera (s) antes de tentar reconectar ao broker
+ESPERA_RECONEXAO = 5
+
 # cor da bolinha e texto de cada estado da conexao
 ESTADOS = {
-    "conectando": ("#e0b000", "Conectando ao broker..."),
-    "conectado": ("#2e9e4f", "Conectado"),
-    "desconectado": ("#d03030", "Desconectado"),
+    "conectando": ("#e0b000", f"Conectando ao broker ({config.HOST}:{config.PORT})..."),
+    "conectado": ("#2e9e4f", f"Conectado ao broker ({config.HOST}:{config.PORT})"),
+    "desconectado": ("#d03030", f"Desconectado, tentando de novo em {ESPERA_RECONEXAO} s"),
 }
 
 COR_ERRO = "#d03030"
@@ -64,24 +68,35 @@ def ao_receber(recados, log, canal, metodo, propriedades, corpo):
 
 def consumir(parametros, nome_fila, padroes, recados, log):
     # roda na thread de fundo e nunca mexe na janela, so deixa recados
-    try:
-        subscriber.preparar_fila(parametros, nome_fila, padroes, log)
-        conexao = pika.BlockingConnection(parametros)
-        canal = conexao.channel()
+    preparada = False
+    while True:
+        recados.put(("estado", "conectando"))
+        try:
+            # limpa e cria os bindings so na primeira vez, para uma reconexao
+            # nao apagar as assinaturas feitas durante a sessao
+            if not preparada:
+                subscriber.preparar_fila(parametros, nome_fila, padroes, log)
+                preparada = True
 
-        # recebe uma mensagem por vez
-        canal.basic_qos(prefetch_count=1)
-        canal.basic_consume(
-            queue=nome_fila,
-            on_message_callback=functools.partial(ao_receber, recados, log),
-            auto_ack=False,
-        )
-        log.info("conexao estado=conectado host=%s port=%s", config.HOST, config.PORT)
-        recados.put(("estado", "conectado"))
-        canal.start_consuming()
-    except pika.exceptions.AMQPError as e:
-        log.error("erro_broker detalhe=%r", e)
-    recados.put(("estado", "desconectado"))
+            conexao = pika.BlockingConnection(parametros)
+            canal = conexao.channel()
+
+            # recebe uma mensagem por vez
+            canal.basic_qos(prefetch_count=1)
+            canal.basic_consume(
+                queue=nome_fila,
+                on_message_callback=functools.partial(ao_receber, recados, log),
+                auto_ack=False,
+            )
+            log.info("conexao estado=conectado host=%s port=%s", config.HOST, config.PORT)
+            recados.put(("estado", "conectado"))
+            canal.start_consuming()
+        except pika.exceptions.AMQPError as e:
+            log.error("conexao estado=desconectado host=%s port=%s erro=%r", config.HOST, config.PORT, e)
+
+        # a conexao caiu ou nem abriu: espera e tenta de novo
+        recados.put(("estado", "desconectado"))
+        time.sleep(ESPERA_RECONEXAO)
 
 
 def hora_local(publicado_em):
