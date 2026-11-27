@@ -3,9 +3,12 @@ import sys
 import tkinter as tk
 from tkinter import ttk
 
+import pika
+
 import config
 import logs
 import mensagem
+import publisher
 
 COR_ERRO = "#d03030"
 COR_OK = "#2e9e4f"
@@ -108,6 +111,34 @@ class JanelaPublisher:
         msg = self.montar_noticia()
         if msg is None:
             return
+
+        # uma conexao por clique, como no publisher de terminal
+        try:
+            conexao, canal = publisher.conectar(self.log)
+        except pika.exceptions.AMQPError as e:
+            self.log.error("conexao estado=falha host=%s port=%s erro=%r", config.HOST, config.PORT, e)
+            self.avisar(f"Não foi possível conectar ao broker ({config.HOST}:{config.PORT})", erro=True)
+            return
+
+        try:
+            publisher.publicar(canal, msg, self.log)
+        except pika.exceptions.NackError as e:
+            # o confirm_delivery levanta essa excecao quando o broker recusa
+            self.log.error("publicacao_falhou id=%s erro=%r", msg["id"], e)
+            self.avisar("O broker não confirmou a notícia", erro=True)
+            return
+        except pika.exceptions.AMQPError as e:
+            self.log.error("publicacao_falhou id=%s erro=%r", msg["id"], e)
+            self.avisar(f"Erro na comunicação com o broker: {e!r}", erro=True)
+            return
+        finally:
+            publisher.desconectar(conexao, self.log)
+
+        self.avisar(f"Publicada: {msg['titulo']}")
+        # limpa titulo e resumo e mantem a categoria
+        self.texto_titulo.set("")
+        self.resumo.delete("1.0", "end")
+        self.titulo.focus_set()
 
     def avisar(self, texto, erro=False):
         self.status.configure(text=texto, foreground=COR_ERRO if erro else COR_OK)
