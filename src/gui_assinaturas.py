@@ -2,6 +2,8 @@ import functools
 import tkinter as tk
 from tkinter import ttk
 
+import pika
+
 import config
 import subscriber
 
@@ -32,7 +34,15 @@ class PainelAssinaturas:
     def alternar(self, padrao):
         # a caixinha ja mudou quando o comando roda, entao o valor dela diz o que fazer
         assinar = self.marcadas[padrao].get()
-        subscriber.alterar_binding(self.parametros, self.nome_fila, padrao, assinar=assinar, log=self.log)
+        try:
+            subscriber.alterar_binding(self.parametros, self.nome_fila, padrao, assinar=assinar, log=self.log)
+        except pika.exceptions.AMQPError as e:
+            self.log.error("erro_broker detalhe=%r", e)
+            # o broker nao aceitou: a caixinha volta e a lista nao muda
+            self.marcadas[padrao].set(not assinar)
+            acao = "assinar" if assinar else "cancelar"
+            self.avisar(f"Não foi possível {acao} {padrao}", erro=True)
+            return
 
         if assinar:
             self.assinaturas.append(padrao)
