@@ -65,6 +65,29 @@ def consumir(nome_fila, parametros, log):
         log.error("erro_broker detalhe=%r", e)
         print(f"Erro na comunicação com o broker: {e!r}", file=sys.stderr)
 
+def preparar_fila(parametros, nome_fila, padroes, log):
+    # declara exchange e fila, tira os bindings antigos e cria os pedidos
+    conexao = pika.BlockingConnection(parametros)
+    try:
+        canal = conexao.channel()
+
+        canal.exchange_declare(exchange=config.EXCHANGE, exchange_type="topic", durable=True)
+
+        canal.queue_declare(queue=nome_fila, durable=True, exclusive=False, auto_delete=False)
+
+        # remove assinaturas antigas
+        for padrao in config.CHAVES_PERMITIDAS + (config.PADRAO_TODAS,):
+            canal.queue_unbind(queue=nome_fila, exchange=config.EXCHANGE, routing_key=padrao)
+        log.info("limpeza_bindings fila=%s (bindings antigos removidos)", nome_fila)
+
+        # 1 binding por padrao
+        for padrao in padroes:
+            canal.queue_bind(queue=nome_fila, exchange=config.EXCHANGE, routing_key=padrao)
+            log.info("binding_criado fila=%s padrao=%s", nome_fila, padrao)
+    finally:
+        if conexao.is_open:
+            conexao.close()
+
 def alterar_binding(parametros, nome_fila, padrao, assinar, log):
     # conexao curta, so para esta operacao
     conexao = pika.BlockingConnection(parametros)
@@ -160,31 +183,12 @@ def main():
         host=config.HOST, port=config.PORT, credentials=credenciais
     )
 
-    conexao = None
     try:
-        conexao = pika.BlockingConnection(parametros)
-        canal = conexao.channel()
-
-        canal.exchange_declare(exchange=config.EXCHANGE, exchange_type="topic", durable=True)
-
-        canal.queue_declare(queue=nome_fila, durable=True, exclusive=False, auto_delete=False)
-
-        # remove assinaturas antigas
-        for padrao in config.CHAVES_PERMITIDAS + (config.PADRAO_TODAS,):
-            canal.queue_unbind(queue=nome_fila, exchange=config.EXCHANGE, routing_key=padrao)
-        log.info("limpeza_bindings fila=%s (bindings antigos removidos)", nome_fila)
-
-        # 1 binding por padrao
-        for padrao in padroes:
-            canal.queue_bind(queue=nome_fila, exchange=config.EXCHANGE, routing_key=padrao)
-            log.info("binding_criado fila=%s padrao=%s", nome_fila, padrao)
+        preparar_fila(parametros, nome_fila, padroes, log)
     except pika.exceptions.AMQPError as e:
         log.error("conexao estado=falha host=%s port=%s erro=%r", config.HOST, config.PORT, e)
         print(f"Erro na comunicação com o broker: {e!r}", file=sys.stderr)
         return 2
-    finally:
-        if conexao is not None and conexao.is_open:
-            conexao.close()
 
     print(f"Subscriber {args.id!r} conectado. Fila: {nome_fila}")
     if padroes:

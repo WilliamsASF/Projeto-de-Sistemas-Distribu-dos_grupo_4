@@ -127,5 +127,35 @@ class TestAoReceber(unittest.TestCase):
         log.warning.assert_called_once()
 
 
+class TestPrepararFila(unittest.TestCase):
+    def preparar(self, padroes):
+        # roda preparar_fila com o pika simulado e devolve (conexao, canal)
+        conexao = mock.Mock(is_open=True)
+        canal = conexao.channel.return_value
+        with mock.patch.object(subscriber.pika, "BlockingConnection", return_value=conexao):
+            subscriber.preparar_fila("params", "fila.sub1", padroes, mock.Mock())
+        return conexao, canal
+
+    def test_limpa_todos_os_padroes_e_cria_so_os_pedidos(self):
+        conexao, canal = self.preparar(["esportes", "#"])
+        canal.queue_declare.assert_called_once_with(
+            queue="fila.sub1", durable=True, exclusive=False, auto_delete=False
+        )
+        removidos = [c.kwargs["routing_key"] for c in canal.queue_unbind.call_args_list]
+        self.assertEqual(removidos, ["tecnologia", "esportes", "cultura", "teste", "#"])
+        criados = [c.kwargs["routing_key"] for c in canal.queue_bind.call_args_list]
+        self.assertEqual(criados, ["esportes", "#"])
+        conexao.close.assert_called_once()
+
+    def test_fecha_a_conexao_mesmo_com_erro(self):
+        import pika
+        conexao = mock.Mock(is_open=True)
+        conexao.channel.return_value.queue_declare.side_effect = pika.exceptions.AMQPError("falhou")
+        with mock.patch.object(subscriber.pika, "BlockingConnection", return_value=conexao):
+            with self.assertRaises(pika.exceptions.AMQPError):
+                subscriber.preparar_fila("params", "fila.sub1", [], mock.Mock())
+        conexao.close.assert_called_once()
+
+
 if __name__ == "__main__":
     unittest.main()
