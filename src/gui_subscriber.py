@@ -47,7 +47,7 @@ def ler_argumentos():
     return parser.parse_args()
 
 
-def ao_receber(recados, log, canal, metodo, propriedades, corpo):
+def ao_receber(recados, log, id_subscriber, canal, metodo, propriedades, corpo):
     # mesma validacao do subscriber de terminal, mas a noticia vai para a fila de recados
     try:
         msg = json.loads(corpo.decode("utf-8"))
@@ -63,12 +63,22 @@ def ao_receber(recados, log, canal, metodo, propriedades, corpo):
         recados.put(("invalida", None))
         return
 
-    recados.put(("noticia", msg))
+    # salva antes do ack, assim a noticia so sai da fila depois de salva
+    try:
+        nova = historico.adicionar(id_subscriber, msg)
+    except OSError as e:
+        log.error("historico_falhou id=%s erro=%r", msg["id"], e)
+        recados.put(("erro", "Não foi possível salvar a notícia no histórico (ver log)"))
+        nova = True
+
+    # uma reentrega do que ja estava salvo nao aparece de novo no feed
+    if nova:
+        recados.put(("noticia", msg))
     canal.basic_ack(delivery_tag=metodo.delivery_tag)
     log.info("entrega id=%s categoria=%s", msg["id"], msg["categoria"])
 
 
-def consumir(parametros, nome_fila, padroes, recados, log):
+def consumir(parametros, id_subscriber, nome_fila, padroes, recados, log):
     # roda na thread de fundo e nunca mexe na janela, so deixa recados
     preparada = False
     while True:
@@ -87,7 +97,7 @@ def consumir(parametros, nome_fila, padroes, recados, log):
             canal.basic_qos(prefetch_count=1)
             canal.basic_consume(
                 queue=nome_fila,
-                on_message_callback=functools.partial(ao_receber, recados, log),
+                on_message_callback=functools.partial(ao_receber, recados, log, id_subscriber),
                 auto_ack=False,
             )
             log.info("conexao estado=conectado host=%s port=%s", config.HOST, config.PORT)
@@ -167,6 +177,8 @@ class JanelaSubscriber:
                 self.definir_estado(valor)
             elif tipo == "noticia":
                 self.mostrar_noticia(valor)
+            elif tipo == "erro":
+                self.avisar(valor, erro=True)
             elif tipo == "invalida":
                 self.descartadas += 1
                 self.avisar(f"{self.descartadas} mensagem(ns) inválida(s) descartada(s) (ver log)", erro=True)
@@ -243,7 +255,7 @@ def main():
 
     # a thread encerra junto com a janela
     thread_consumo = threading.Thread(
-        target=consumir, args=(parametros, nome_fila, padroes, recados, log), daemon=True
+        target=consumir, args=(parametros, args.id, nome_fila, padroes, recados, log), daemon=True
     )
     thread_consumo.start()
 
